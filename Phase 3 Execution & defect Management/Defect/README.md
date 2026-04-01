@@ -32,6 +32,9 @@ Track, manage, and analyse all defects discovered during test execution. Use AI 
 | Deliverable                                | File                            |
 | ------------------------------------------ | ------------------------------- |
 | Bug Reports (with severity, priority, RCA) | `deliverables/bug-reports.md` |
+<img width="1112" height="786" alt="image" src="https://github.com/user-attachments/assets/c34d9319-9855-40c2-a20e-e8b253e582b0" />
+<img width="1120" height="756" alt="image" src="https://github.com/user-attachments/assets/e897c032-5f68-41ce-8893-8e46098a51ba" />
+
 
 ---
 
