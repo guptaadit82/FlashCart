@@ -1,0 +1,257 @@
+/*
+ * SmartCart QA Ecosystem — Jenkinsfile
+ * Phase 07: CI/CD Integration
+ *
+ * Pipeline Stages:
+ *   1. Checkout
+ *   2. Environment Setup
+ *   3. API Automation (Parallel)
+ *   4. UI Automation
+ *   5. Performance Tests
+ *   6. Defect Analysis & Reporting
+ *   7. Publish Reports
+ *   8. Notify
+ */
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'TEST_SUITE',
+            choices: ['smoke', 'regression', 'full'],
+            description: 'Select test suite to execute'
+        )
+        choice(
+            name: 'BROWSER',
+            choices: ['chrome', 'firefox'],
+            description: 'Browser for UI tests'
+        )
+        booleanParam(
+            name: 'RUN_PERFORMANCE',
+            defaultValue: false,
+            description: 'Run performance tests?'
+        )
+    }
+
+    environment {
+        API_BASE_URL = 'http://localhost:8080/api'
+        UI_BASE_URL  = 'http://localhost:3000'
+        JAVA_HOME    = tool 'JDK-17'
+        MAVEN_HOME   = tool 'Maven-3.8'
+        PATH         = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
+        ALLURE_HOME  = tool 'Allure-2.24'
+    }
+
+    options {
+        timeout(time: 90, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        ansiColor('xterm')
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out repository...'
+                checkout scm
+                sh 'git log --oneline -5'
+            }
+        }
+
+        stage('Environment Setup') {
+            steps {
+                echo '🔧 Starting SmartCart test environment...'
+                dir('phase-04-test-environment-setup/scripts') {
+                    sh 'docker-compose down -v || true'
+                    sh 'docker-compose up -d'
+                    sh 'sleep 30'
+
+                    // Health checks
+                    sh '''
+                        echo "Checking backend health..."
+                        for i in {1..10}; do
+                            STATUS=$(curl -s http://localhost:8080/actuator/health | grep -o '"UP"' || echo "")
+                            if [ "$STATUS" = '"UP"' ]; then
+                                echo "Backend is healthy!"
+                                break
+                            fi
+                            echo "Attempt $i - Backend not ready yet, waiting..."
+                            sleep 10
+                        done
+                    '''
+
+                    sh 'docker-compose ps'
+                }
+
+                // Seed test data
+                sh '''
+                    docker exec -i smartcart-mysql \\
+                        mysql -u qauser -pqapassword smartcart_qa \\
+                        < phase-04-test-environment-setup/scripts/init-db/seed-data.sql
+                    echo "Test data seeded successfully"
+                '''
+            }
+        }
+
+        stage('API Automation') {
+            parallel {
+
+                stage('Rest Assured Tests') {
+                    steps {
+                        echo '🔌 Running Rest Assured API tests...'
+                        dir('phase-05-test-execution/scripts/api-automation/rest-assured') {
+                            sh """
+                                mvn test \\
+                                    -Denv=qa \\
+                                    -Dapi.base.url=${API_BASE_URL} \\
+                                    -Dsuite=${params.TEST_SUITE} \\
+                                    -Dsurefire.rerunFailingTestsCount=2 \\
+                                    -Dallure.results.directory=target/allure-results \\
+                                    -Dmaven.test.failure.ignore=true
+                            """
+                        }
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'phase-05-test-execution/scripts/api-automation/rest-assured/target/surefire-reports/*.xml',
+                                             allowEmptyArchive: true
+                        }
+                    }
+                }
+
+                stage('Karate API Tests') {
+                    steps {
+                        echo '🥋 Running Karate API tests...'
+                        dir('phase-05-test-execution/scripts/api-automation/karate') {
+                            sh """
+                                mvn test \\
+                                    -Dkarate.env=qa \\
+                                    -Dapi.base.url=${API_BASE_URL} \\
+                                    -Dmaven.test.failure.ignore=true
+                            """
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                reportDir: 'phase-05-test-execution/scripts/api-automation/karate/target/karate-reports',
+                                reportFiles: 'karate-summary.html',
+                                reportName: 'Karate Report'
+                            ])
+                        }
+                    }
+                }
+
+            }
+        }
+
+        stage('UI Automation') {
+            steps {
+                echo "🖥️ Running Selenium UI tests on ${params.BROWSER}..."
+                dir('phase-05-test-execution/scripts/ui-automation') {
+                    sh """
+                        mvn test \\
+                            -Dbrowser=${params.BROWSER} \\
+                            -Dgrid.url=http://localhost:4444/wd/hub \\
+                            -Dbase.url=${UI_BASE_URL} \\
+                            -Dsuite=${params.TEST_SUITE} \\
+                            -Dsurefire.rerunFailingTestsCount=2 \\
+                            -Dallure.results.directory=target/allure-results \\
+                            -Dmaven.test.failure.ignore=true
+                    """
+                }
+            }
+            post {
+                failure {
+                    echo 'Capturing screenshots for failed UI tests...'
+                    archiveArtifacts artifacts: 'phase-05-test-execution/scripts/ui-automation/target/screenshots/*.png',
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Performance Tests') {
+            when {
+                expression { params.RUN_PERFORMANCE == true }
+            }
+            steps {
+                echo '⚡ Running k6 performance tests...'
+                dir('phase-05-test-execution/scripts/performance') {
+                    sh """
+                        k6 run \\
+                            --env BASE_URL=${API_BASE_URL} \\
+                            --out json=../../reports/k6-results.json \\
+                            smartcart-load.js
+                    """
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'phase-05-test-execution/reports/k6-results.json',
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Generate Allure Report') {
+            steps {
+                echo '📊 Generating Allure test report...'
+                sh """
+                    mkdir -p allure-results-combined
+
+                    # Merge results from all modules
+                    cp -r phase-05-test-execution/scripts/api-automation/rest-assured/target/allure-results/* \\
+                        allure-results-combined/ 2>/dev/null || true
+                    cp -r phase-05-test-execution/scripts/ui-automation/target/allure-results/* \\
+                        allure-results-combined/ 2>/dev/null || true
+                """
+                allure([
+                    includeProperties: false,
+                    jdk: '',
+                    properties: [],
+                    reportBuildPolicy: 'ALWAYS',
+                    results: [[path: 'allure-results-combined']]
+                ])
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Cleaning up test environment...'
+            dir('phase-04-test-environment-setup/scripts') {
+                sh 'docker-compose down || true'
+            }
+        }
+
+        success {
+            echo '✅ Pipeline completed successfully!'
+            emailext(
+                subject: "✅ SmartCart QA Pipeline PASSED — Build #${BUILD_NUMBER}",
+                body: """
+                    Build: ${BUILD_URL}
+                    Suite: ${params.TEST_SUITE}
+                    Status: SUCCESS
+                    Allure Report: ${BUILD_URL}allure/
+                """,
+                to: 'qa-team@smartcart.com'
+            )
+        }
+
+        failure {
+            echo '❌ Pipeline FAILED!'
+            emailext(
+                subject: "❌ SmartCart QA Pipeline FAILED — Build #${BUILD_NUMBER}",
+                body: """
+                    Build: ${BUILD_URL}
+                    Suite: ${params.TEST_SUITE}
+                    Status: FAILURE
+                    Check console: ${BUILD_URL}console
+                """,
+                to: 'qa-team@smartcart.com'
+            )
+        }
+    }
+}
