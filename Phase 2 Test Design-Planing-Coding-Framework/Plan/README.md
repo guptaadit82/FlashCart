@@ -32,6 +32,8 @@ Define the complete testing strategy, scope, tools, resource allocation, timelin
 | Deliverable        | File                          |
 | ------------------ | ----------------------------- |
 | Test Plan Document | `deliverables/test-plan.md` |
+<img width="1122" height="787" alt="image" src="https://github.com/user-attachments/assets/1fdde48e-41fb-4a2a-97d1-ac3a5fd0508e" />
+<img width="1159" height="748" alt="image" src="https://github.com/user-attachments/assets/cc402cee-1e09-48db-9109-8dde0cb0d3a0" />
 
 ---
 
