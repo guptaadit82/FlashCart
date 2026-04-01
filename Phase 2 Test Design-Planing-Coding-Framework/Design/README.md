@@ -32,6 +32,8 @@ Create structured test coverage through detailed test cases and a Requirement Tr
 | ------------------------------------- | ------------------------------ |
 | Test Case Sheet                       | `deliverables/test-cases.md` |
 | Requirement Traceability Matrix (RTM) | `deliverables/rtm.md`        |
+<img width="1207" height="764" alt="image" src="https://github.com/user-attachments/assets/7dde9f0f-4c63-4ef8-9cfd-2ff1f2c26739" />
+
 
 ---
 
