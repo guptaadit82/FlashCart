@@ -36,6 +36,7 @@ Set up a fully containerized, reproducible test environment for SmartCart includ
 | ---------------------------- | ------------------------------------------- |
 | Environment Setup Guide      | `deliverables/environment-setup-guide.md` |
 | Docker Compose Configuration | `scripts/docker-compose.yml`              |
+![Uploading image.png…]()
 
 ---
 
