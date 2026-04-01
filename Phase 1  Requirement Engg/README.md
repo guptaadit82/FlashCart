@@ -64,6 +64,9 @@ concurrent user scenarios, and data validation failures.
 | `evidence/brd-screenshot.png` | Business Requirement Document as created |
 | `evidence/user-stories-screenshot.png` | User stories in JIRA with acceptance criteria |
 <img width="1118" height="748" alt="image" src="https://github.com/user-attachments/assets/a7e77fd2-8776-408f-bf1b-1b87a9859b96" />
+<img width="1130" height="769" alt="image" src="https://github.com/user-attachments/assets/ba3ac18a-62c8-4859-9aec-5a04f907d3c5" />
+<img width="1147" height="764" alt="image" src="https://github.com/user-attachments/assets/6f82c311-e3ad-40a5-a003-84945ceed708" />
+<img width="1118" height="752" alt="image" src="https://github.com/user-attachments/assets/c54b26be-6e5c-4f68-9031-8595f40763e2" />
 
 
 *Evidence screenshots collected during actual project execution are stored in the `evidence/` folder.*
