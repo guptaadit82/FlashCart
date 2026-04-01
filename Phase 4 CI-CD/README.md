@@ -60,6 +60,8 @@ Suggest a retry strategy that minimises false failures without masking real bugs
 
 - `evidence/github-actions-run.png` — Successful pipeline run in GitHub Actions
 - `evidence/pipeline-stages.png` — Pipeline stage breakdown
+<img width="571" height="821" alt="image" src="https://github.com/user-attachments/assets/323efe84-d376-44fa-942c-48843691e801" />
+
 
 ---
 
