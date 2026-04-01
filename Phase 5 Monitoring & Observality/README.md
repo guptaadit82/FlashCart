@@ -34,6 +34,7 @@ Establish full observability for the SmartCart system using Prometheus for metri
 | ---------------------------- | ---------------------------------------- |
 | Prometheus Configuration     | `scripts/prometheus.yml`               |
 | Monitoring Dashboard Summary | `deliverables/monitoring-dashboard.md` |
+![Uploading image.png…]()
 
 ---
 
